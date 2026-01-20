@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  apim:
+    image: wso2/wso2am:latest
+    ports:
+      - "9443:9443"
+      - "8243:8243"
+      - "8280:8280"
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m
