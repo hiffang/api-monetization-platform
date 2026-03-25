@@ -1,11 +1,84 @@
 version: "3.8"
 
 services:
+  # Backend API Service
+  backend-api:
+    build:
+      context: ./backend-api
+      dockerfile: Dockerfile
+    container_name: api-monetization-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=False
+      - DATABASE_URL=postgresql://api_user:api_password@db:5432/api_monetization
+    env_file:
+      - ./backend-api/.env
+    depends_on:
+      - db
+      - redis
+    networks:
+      - api-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: api-monetization-db
+    environment:
+      - POSTGRES_USER=api_user
+      - POSTGRES_PASSWORD=api_password
+      - POSTGRES_DB=api_monetization
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - api-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U api_user" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: api-monetization-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - api-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # WSO2 API Manager
   apim:
     image: wso2/wso2am:latest
+    container_name: api-monetization-apim
     ports:
       - "9443:9443"
       - "8243:8243"
       - "8280:8280"
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
+    networks:
+      - api-network
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+
+networks:
+  api-network:
+    driver: bridge
